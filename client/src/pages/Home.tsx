@@ -8,7 +8,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { generateReview, GOOGLE_REVIEW_URL, questions, type QuestionAnswers } from "@/lib/reviewGenerator";
-import { Check, Copy, Sparkles } from "lucide-react";
+import { Check, Copy, Edit3, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -17,6 +17,8 @@ export default function Home() {
   const [answers, setAnswers] = useState<Partial<QuestionAnswers>>({});
   const [generatedReview, setGeneratedReview] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedReview, setEditedReview] = useState('');
 
   const handleAnswer = (questionKey: keyof QuestionAnswers, answer: string) => {
     const newAnswers = { ...answers, [questionKey]: answer };
@@ -31,13 +33,15 @@ export default function Home() {
       // 口コミ生成
       const review = generateReview(newAnswers as QuestionAnswers);
       setGeneratedReview(review);
+      setEditedReview(review);
       setTimeout(() => setCurrentStep('result'), 300);
     }
   };
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(generatedReview);
+      const textToCopy = isEditing ? editedReview : generatedReview;
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       toast.success('口コミ文章をコピーしました！');
       setTimeout(() => setCopied(false), 2000);
@@ -50,7 +54,9 @@ export default function Home() {
     setCurrentStep(1);
     setAnswers({});
     setGeneratedReview('');
+    setEditedReview('');
     setCopied(false);
+    setIsEditing(false);
   };
 
   return (
@@ -170,11 +176,57 @@ export default function Home() {
                 </h2>
               </div>
               
-              <div className="bg-muted/30 rounded-xl p-6 mb-6 border border-border/50">
-                <p className="text-foreground leading-relaxed whitespace-pre-wrap">
-                  {generatedReview}
-                </p>
-              </div>
+              {!isEditing ? (
+                <div className="bg-muted/30 rounded-xl p-6 mb-6 border border-border/50 relative group">
+                  <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                    {generatedReview}
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditedReview(generatedReview);
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity gap-2"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    編集
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3 mb-6">
+                  <textarea
+                    value={editedReview}
+                    onChange={(e) => setEditedReview(e.target.value)}
+                    className="w-full min-h-[200px] bg-muted/30 rounded-xl p-6 border border-border/50 text-foreground leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                    placeholder="口コミ文章を編集してください..."
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditedReview(generatedReview);
+                      }}
+                      variant="ghost"
+                      size="sm"
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setGeneratedReview(editedReview);
+                        setIsEditing(false);
+                        toast.success('編集内容を保存しました');
+                      }}
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      保存
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
